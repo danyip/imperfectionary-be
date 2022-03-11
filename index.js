@@ -1,17 +1,21 @@
 const express = require('express');
-const app = express();
-const http = require('http');
-const socketIO = require('socket.io')
+const {createServer} = require('http');
+const {Server} = require('socket.io');
 
-const server = http.Server(app)
+const app = express();
+const httpServer = createServer(app)
+const io = new Server(httpServer, {
+  cors: {
+    orign: '*'
+  }
+})
 
 const PORT = 9090;
 
-server.listen(PORT, ()=>{
+httpServer.listen(PORT, ()=>{
   console.log(`Server listening on http://localhost:${PORT}`);
 })
 
-const io = socketIO(server)
 
 io.on('connection', (socket) => {
   console.log('io.on("connection")');
