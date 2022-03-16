@@ -16,7 +16,6 @@ const io = new Server(httpServer, {
   },
 });
 
-
 const User = require("./models/User");
 
 const bcrypt = require("bcrypt");
@@ -33,15 +32,15 @@ const checkAuth = () => {
   });
 };
 
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-mongoose.connect('mongodb://127.0.0.1/imperfectionary');
+mongoose.connect("mongodb://127.0.0.1/imperfectionary");
 
 const db = mongoose.connection;
 
-db.on('error', (err) => {
-  console.log('Connection error', err);
-  process.exit( 1 );
+db.on("error", (err) => {
+  console.log("Connection error", err);
+  process.exit(1);
   // TODO: handle gracefully instead? Keep server running?
 });
 
@@ -50,6 +49,8 @@ const PORT = 9090;
 httpServer.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+/*********************************************************************************/
 
 app.post("/login", async (req, res) => {
   console.log("POST /login", req.body);
@@ -69,97 +70,120 @@ app.post("/login", async (req, res) => {
   }
 });
 
+/*********************************************************************************/
 
 const game = {
-  
-}
+  //roomName: {
+  //  players: []
+  // }
 
+  addUser: function (room, username) {
+    // if there is already a game with this room name
+    if (this[room]) {
+      this[room].players.push(username); // add the username to the players list
+    } else {
+      // if there is not already a game with this name make one
+      this[room] = { players: [username] };
+    }
+  },
 
-io.use((socket, next)=>{
+  removeUser: function (room, username) {
+    if (this[room]) {
+      this[room].players = this[room].players.filter(
+        (name) => name !== username
+      );
+    }
+  },
+};
 
-  console.log('io.use()', socket.handshake.auth );
-  if (socket.handshake.auth.token){
-    jwt.verify(socket.handshake.auth.token, process.env.SERVER_SECRET_KEY, async function(err, decoded) {
-      if (err) return next(new Error('Authentication error'));
+/*********************************************************************************/
 
-      try {
-        const res = await User.findOne({_id: decoded._id})
-        socket.username = res.username
-      } catch (err) {
-        console.log(err);
+// Middleware to authenticate socket connection
+io.use((socket, next) => {
+  // console.log("io.use()", socket.handshake.auth);
+  if (socket.handshake.auth.token) {
+    jwt.verify(
+      socket.handshake.auth.token,
+      process.env.SERVER_SECRET_KEY,
+      async function (err, decoded) {
+        if (err) return next(new Error("Authentication error"));
+
+        try {
+          const res = await User.findOne({ _id: decoded._id });
+          socket.username = res.username;
+        } catch (err) {
+          console.log(err);
+        }
+
+        socket.decoded = decoded;
+
+        next();
       }
-
-      socket.decoded = decoded;
-
-      next();
-    });
+    );
+  } else {
+    next(new Error("Authentication error"));
   }
-  else {
-    next(new Error('Authentication error'));
-  }  
-
-})
+});
 
 io.on("connection", (socket) => {
-  console.log('io.on("connection")', socket.decoded._id);
+  // console.log('io.on("connection")', socket.decoded._id);
 
   socket.on("canvas-data", (data) => {
     socket.broadcast.emit("canvas-data", data);
   });
 
-  // Send all room names to lobby
-  socket.on('enter-lobby', () => {
-      
-      // Convert map of all rooms to an array
-      const arr = Array.from(io.sockets.adapter.rooms);
-      
-      // Filter the array to remove private message rooms (rooms where the name is also contained in the list of connected sockets)
-      const filtered = arr.filter(room => !room[1].has(room[0]))
+  socket.on("enter-lobby", () => {
+    // Send all room names to lobby
+    const rooms = roomsArray(io.sockets.adapter.rooms);
+    io.emit("new-rooms", rooms);
+  });
 
-      // Map the filtered array to return just the room names 
-      const res = filtered.map(i => i[0]);
-      
-      // Send the array of user created room namescd
-      io.emit("new-rooms", res);
-  })
-
-  // Join a socket to a room
-  socket.on('join-room', (data)=>{
-
+  socket.on("join-room", (data) => {
     // Get the users list of rooms
-    const socketRooms = Array.from(socket.rooms.keys())
+    const socketRooms = Array.from(socket.rooms.keys());
 
     // Find any old room that they are in
-    const oldRoomName = socketRooms.find(roomName => !roomName.includes(socket.id))
-    
+    const oldRoomName = socketRooms.find(
+      (roomName) => !roomName.includes(socket.id)
+    );
+
     // Leave the old room before joining a new room
-    if (oldRoomName){
-      socket.leave(oldRoomName)
+    if (oldRoomName) {
+      socket.leave(oldRoomName);
     }
+
+    // Add the room name to the socket
+    socket.roomName = data;
 
     // Join the new room
-    socket.join(data)
+    socket.join(data);
 
-    console.log(game);
-    
-    if (game[data]) { // if there is already a game with this room name
+    // Add username to game
+    game.addUser(data, socket.username);
 
-      game[data][players].push(socket.username) // add the username to the players list
-      
-      console.log(game);
+    // Emit the rooms list back to FE
+    const rooms = roomsArray(io.sockets.adapter.rooms);
+    io.emit("new-rooms", rooms);
+  });
 
-    } else { // if there is not already a game with this name make one
-      game[data] = {players: [socket.username]}
-      
-      console.log(game);
-    }
+  socket.on("enter-game-room", (callback) => {
+    // callback(game[socket.roomName].players)
+  });
 
-    const arr = Array.from(io.sockets.adapter.rooms);
-    const filtered = arr.filter(room => !room[1].has(room[0]))
-    const res = filtered.map(i => i[0]);
-    
-    io.emit("new-rooms", res);
-  })
-
+  socket.on("disconnect", (reason) => {
+    // Remove user from game
+    game.removeUser(socket.roomName, socket.username);
+  });
 });
 
+// Helper function to process es6 Map
+const roomsArray = (roomsMap) => {
+  // convert es6 Map object of rooms into an array
+  const arr = Array.from(roomsMap);
+
+  // process the array to remove rooms that have a name matching the contained socket
+  const filtered = arr.filter((room) => !room[1].has(room[0]));
+
+  // return just the names of the remaining rooms (the rooms that are user generated)
+  return filtered.map((i) => i[0]);
+};
