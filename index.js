@@ -69,8 +69,39 @@ app.post("/login", async (req, res) => {
   }
 });
 
+
+const game = {
+  
+}
+
+
+io.use((socket, next)=>{
+
+  console.log('io.use()', socket.handshake.auth );
+  if (socket.handshake.auth.token){
+    jwt.verify(socket.handshake.auth.token, process.env.SERVER_SECRET_KEY, async function(err, decoded) {
+      if (err) return next(new Error('Authentication error'));
+
+      try {
+        const res = await User.findOne({_id: decoded._id})
+        socket.username = res.username
+      } catch (err) {
+        console.log(err);
+      }
+
+      socket.decoded = decoded;
+
+      next();
+    });
+  }
+  else {
+    next(new Error('Authentication error'));
+  }  
+
+})
+
 io.on("connection", (socket) => {
-  console.log('io.on("connection")', socket.id);
+  console.log('io.on("connection")', socket.decoded._id);
 
   socket.on("canvas-data", (data) => {
     socket.broadcast.emit("canvas-data", data);
@@ -94,7 +125,7 @@ io.on("connection", (socket) => {
 
   // Join a socket to a room
   socket.on('join-room', (data)=>{
-    
+
     // Get the users list of rooms
     const socketRooms = Array.from(socket.rooms.keys())
 
@@ -109,6 +140,19 @@ io.on("connection", (socket) => {
     // Join the new room
     socket.join(data)
 
+    console.log(game);
+    
+    if (game[data]) { // if there is already a game with this room name
+
+      game[data][players].push(socket.username) // add the username to the players list
+      
+      console.log(game);
+
+    } else { // if there is not already a game with this name make one
+      game[data] = {players: [socket.username]}
+      
+      console.log(game);
+    }
 
     const arr = Array.from(io.sockets.adapter.rooms);
     const filtered = arr.filter(room => !room[1].has(room[0]))
