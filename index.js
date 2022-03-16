@@ -16,6 +16,7 @@ const io = new Server(httpServer, {
   },
 });
 
+
 const User = require("./models/User");
 
 const bcrypt = require("bcrypt");
@@ -50,7 +51,6 @@ httpServer.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
 
-
 app.post("/login", async (req, res) => {
   console.log("POST /login", req.body);
   const { email, password } = req.body;
@@ -69,11 +69,53 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
 io.on("connection", (socket) => {
   console.log('io.on("connection")', socket.id);
 
   socket.on("canvas-data", (data) => {
     socket.broadcast.emit("canvas-data", data);
   });
+
+  // Send all room names to lobby
+  socket.on('enter-lobby', () => {
+      
+      // Convert map of all rooms to an array
+      const arr = Array.from(io.sockets.adapter.rooms);
+      
+      // Filter the array to remove private message rooms (rooms where the name is also contained in the list of connected sockets)
+      const filtered = arr.filter(room => !room[1].has(room[0]))
+
+      // Map the filtered array to return just the room names 
+      const res = filtered.map(i => i[0]);
+      
+      // Send the array of user created room namescd
+      io.emit("new-rooms", res);
+  })
+
+  // Join a socket to a room
+  socket.on('join-room', (data)=>{
+    
+    // Get the users list of rooms
+    const socketRooms = Array.from(socket.rooms.keys())
+
+    // Find any old room that they are in
+    const oldRoomName = socketRooms.find(roomName => !roomName.includes(socket.id))
+    
+    // Leave the old room before joining a new room
+    if (oldRoomName){
+      socket.leave(oldRoomName)
+    }
+
+    // Join the new room
+    socket.join(data)
+
+
+    const arr = Array.from(io.sockets.adapter.rooms);
+    const filtered = arr.filter(room => !room[1].has(room[0]))
+    const res = filtered.map(i => i[0]);
+    
+    io.emit("new-rooms", res);
+  })
+
 });
+
