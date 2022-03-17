@@ -134,7 +134,7 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  // console.log('io.on("connection")', socket.decoded._id);
+  console.log('SOCKET CONNECTED', socket.username);
 
   socket.on("canvas-data", (data) => {
     socket.broadcast.emit("canvas-data", data);
@@ -197,7 +197,7 @@ io.on("connection", (socket) => {
   })
 
   socket.on("disconnect", (reason) => {
-    console.log('SOCKET DISCONNECTED');
+    console.log('SOCKET DISCONNECTED', socket.username);
     // Remove user from game
     game.removeUser(socket.roomName, socket.username);
     io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
