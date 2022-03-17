@@ -61,7 +61,7 @@ app.post("/login", async (req, res) => {
       const token = jwt.sign({ _id: user._id }, process.env.SERVER_SECRET_KEY, {
         expiresIn: "72h",
       });
-      res.json({ token, user: user._id });
+      res.json({ token, user: user.username });
     } else {
       res.sendStatus(401);
     }
@@ -78,21 +78,29 @@ const game = {
   // }
 
   addUser: function (room, username) {
-    // if there is already a game with this room name
-    if (this[room]) {
+    // if there is already a game with this room name and there is at least one player in the list
+    if (room in this && this[room].players.length > 0) {
+      if (this[room].players.includes(username)) return // ignore a rejoin with the same name
       this[room].players.push(username); // add the username to the players list
     } else {
       // if there is not already a game with this name make one
-      this[room] = { players: [username] };
+      this.initializeRoom(room, username)
     }
   },
 
   removeUser: function (room, username) {
-    if (this[room]) {
+    if (room in this) {
       this[room].players = this[room].players.filter(
         (name) => name !== username
       );
     }
+  },
+
+  initializeRoom: function (room, username) {
+    this[room] = { 
+      players: [username],
+      status: 'waiting'
+    };
   },
 };
 
@@ -150,6 +158,8 @@ io.on("connection", (socket) => {
     // Leave the old room before joining a new room
     if (oldRoomName) {
       socket.leave(oldRoomName);
+      game.removeUser(oldRoomName, socket.username)
+      io.to(oldRoomName).emit('update-player-list', game[oldRoomName]?.players)
     }
 
     // Add the room name to the socket
@@ -167,12 +177,26 @@ io.on("connection", (socket) => {
   });
 
   socket.on("enter-game-room", (callback) => {
-    // callback(game[socket.roomName].players)
+    if (game[socket.roomName]?.players) {
+      callback(game[socket.roomName].players, socket.roomName)
+    }else {
+      callback([], 'NO ROOM FOUND')
+    }
+
+    io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
   });
+
+  socket.on("new-message", (messageObj)=>{
+    console.log('new-message', messageObj);
+    socket.to(socket.roomName).emit(
+      'message-data', messageObj
+    )
+  })
 
   socket.on("disconnect", (reason) => {
     // Remove user from game
     game.removeUser(socket.roomName, socket.username);
+    io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
   });
 });
 
