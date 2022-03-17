@@ -135,6 +135,7 @@ io.use((socket, next) => {
 
 io.on("connection", (socket) => {
   console.log('SOCKET CONNECTED', socket.username);
+  console.log('ROOMS', io.sockets.adapter.rooms);
 
   socket.on("canvas-data", (data) => {
     socket.broadcast.emit("canvas-data", data);
@@ -142,6 +143,7 @@ io.on("connection", (socket) => {
 
   socket.on("enter-lobby", () => {
     // Send all room names to lobby
+    console.log('ENTER LOBBY', socket.username);
     
     const rooms = roomsArray(io.sockets.adapter.rooms);
     // io.emit("new-rooms", rooms);
@@ -149,8 +151,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join-room", (data) => {
+    
+    console.log('JOIN ROOM', socket.username, data);
+    
     // Get the users list of rooms
-    console.log('JOIN-ROOM', data);
+    // console.log('JOIN-ROOM', data);
     const socketRooms = Array.from(socket.rooms.keys());
 
     // Find any old room that they are in
@@ -171,6 +176,7 @@ io.on("connection", (socket) => {
     // Join the new room
     socket.join(data);
 
+    console.log('ROOMS', io.sockets.adapter.rooms);
     // Add username to game
     game.addUser(data, socket.username);
 
@@ -180,6 +186,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("enter-game-room", (callback) => {
+    console.log('ENTER GAME ROOM', socket.username);
+
     if (game[socket.roomName]?.players) {
       callback(game[socket.roomName].players, socket.roomName)
     }else {
@@ -190,8 +198,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("new-message", (messageObj)=>{
-    console.log('new-message', messageObj);
-    console.log(io.sockets.adapter.rooms);
+
+    console.log('NEW MESSAGE', socket.username, messageObj);
+    // console.log('new-message', messageObj);
+    // console.log(io.sockets.adapter.rooms);
     socket.to(socket.roomName).emit(
       'message-data', messageObj
     )
