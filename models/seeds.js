@@ -14,7 +14,7 @@ db.on('error', (err) => {
 
 db.once('open', async () => {
 
-  console.log('Connected.');
+  console.log('Connected.');``
 
   await User.deleteMany({});
 
@@ -30,6 +30,16 @@ db.once('open', async () => {
       {
         username: 'luke',
         email: 'luke@ga.co',
+        passwordDigest: bcrypt.hashSync('chicken', 10),
+      },
+      {
+        username: 'elmo',
+        email: 'e@e.com',
+        passwordDigest: bcrypt.hashSync('chicken', 10),
+      },
+      {
+        username: 'testuser',
+        email: 'u@u.com',
         passwordDigest: bcrypt.hashSync('chicken', 10),
       },
     ]);

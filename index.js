@@ -150,6 +150,7 @@ io.on("connection", (socket) => {
 
   socket.on("join-room", (data) => {
     // Get the users list of rooms
+    console.log('JOIN-ROOM', data);
     const socketRooms = Array.from(socket.rooms.keys());
 
     // Find any old room that they are in
