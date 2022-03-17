@@ -76,17 +76,18 @@ const game = {
   //roomName: {
   //  players: [],
   //  status: boolean,
-  //  drawPlayer: ''                        
+  //  drawPlayer: '',
+  //  word: '',
   // }
 
   addUser: function (room, username) {
     // if there is already a game with this room name and there is at least one player in the list
     if (room in this && this[room].players.length > 0) {
-      if (this[room].players.includes(username)) return // ignore a rejoin with the same name
+      if (this[room].players.includes(username)) return; // ignore a rejoin with the same name
       this[room].players.push(username); // add the username to the players list
     } else {
       // if there is not already a game with this name make one
-      this.initializeRoom(room, username)
+      this.initializeRoom(room, username);
     }
   },
 
@@ -99,15 +100,18 @@ const game = {
   },
 
   initializeRoom: function (room, username) {
-    this[room] = { 
+    this[room] = {
       players: [username],
-      started: false
+      started: false,
+      drawPlayer: '',
+      word: '',
     };
   },
 
   startGame: function (room, username) {
-    this[room].started = true
-    this[room].drawPlayer = username
+    this[room].started = true;
+    this[room].drawPlayer = username;
+    this[room].word = randomWord()
   },
 };
 
@@ -141,26 +145,21 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  console.log('SOCKET CONNECTED', socket.username);
-  console.log('ROOMS', io.sockets.adapter.rooms);
-
-  socket.on("canvas-data", (data) => {
-    socket.broadcast.emit("canvas-data", data);
-  });
+  console.log("SOCKET CONNECTED", socket.username);
+  console.log("ROOMS", io.sockets.adapter.rooms);
 
   socket.on("enter-lobby", () => {
     // Send all room names to lobby
-    console.log('ENTER LOBBY', socket.username);
-    
+    console.log("ENTER LOBBY", socket.username);
+
     const rooms = roomsArray(io.sockets.adapter.rooms);
     // io.emit("new-rooms", rooms);
-    socket.emit("new-rooms", rooms)
+    socket.emit("new-rooms", rooms);
   });
 
   socket.on("join-room", (data) => {
-    
-    console.log('JOIN ROOM', socket.username, data);
-    
+    console.log("JOIN ROOM", socket.username, data);
+
     // Get the users list of rooms
     // console.log('JOIN-ROOM', data);
     const socketRooms = Array.from(socket.rooms.keys());
@@ -173,8 +172,8 @@ io.on("connection", (socket) => {
     // Leave the old room before joining a new room
     if (oldRoomName) {
       socket.leave(oldRoomName);
-      game.removeUser(oldRoomName, socket.username)
-      io.to(oldRoomName).emit('update-player-list', game[oldRoomName]?.players)
+      game.removeUser(oldRoomName, socket.username);
+      io.to(oldRoomName).emit("update-player-list", game[oldRoomName]?.players);
     }
 
     // Add the room name to the socket
@@ -183,7 +182,7 @@ io.on("connection", (socket) => {
     // Join the new room
     socket.join(data);
 
-    console.log('ROOMS', io.sockets.adapter.rooms);
+    console.log("ROOMS", io.sockets.adapter.rooms);
     // Add username to game
     game.addUser(data, socket.username);
 
@@ -193,38 +192,45 @@ io.on("connection", (socket) => {
   });
 
   socket.on("enter-game-room", (callback) => {
-    console.log('ENTER GAME ROOM', socket.username);
+    console.log("ENTER GAME ROOM", socket.username);
 
     if (game[socket.roomName]?.players) {
-      callback(game[socket.roomName].players, socket.roomName)
-    }else {
-      callback([], 'NO ROOM FOUND')
+      callback(game[socket.roomName].players, socket.roomName);
+    } else {
+      callback([], "NO ROOM FOUND");
     }
 
-    io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
+    io.to(socket.roomName).emit(
+      "update-player-list",
+      game[socket.roomName]?.players
+    );
   });
 
-  socket.on("new-message", (messageObj)=>{
+  socket.on("new-message", (messageObj) => {
+    console.log("NEW MESSAGE", socket.username, messageObj);
+    socket.to(socket.roomName).emit("message-data", messageObj);
+  });
 
-    console.log('NEW MESSAGE', socket.username, messageObj);
-    socket.to(socket.roomName).emit(
-      'message-data', messageObj
-    )
-  })
+  socket.on("start-trigger", () => {
+    console.log("START-TRIGGER", socket.username, socket.roomName);
 
-  socket.on("start-trigger", ()=>{
-    console.log('START-TRIGGER', socket.username, socket.roomName);
-    
-    game.startGame(socket.roomName, socket.username)
+    game.startGame(socket.roomName, socket.username);
 
-    io.to(socket.roomName).emit('start-game' , game[socket.roomName])
-  })
+    io.to(socket.roomName).emit("start-game", game[socket.roomName]);
+  });
+
+  socket.on("canvas-data", (data) => {
+    socket.to(socket.roomName).emit("canvas-data", data);
+  });
 
   socket.on("disconnect", (reason) => {
-    console.log('SOCKET DISCONNECTED', socket.username);
+    console.log("SOCKET DISCONNECTED", socket.username);
     // Remove user from game
     game.removeUser(socket.roomName, socket.username);
-    io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
+    io.to(socket.roomName).emit(
+      "update-player-list",
+      game[socket.roomName]?.players
+    );
   });
 });
 
@@ -240,60 +246,51 @@ const roomsArray = (roomsMap) => {
   return filtered.map((i) => i[0]);
 };
 
-const randomWord = () =>{
+const randomWord = () => {
   const words = [
+    "Elephant",
+    "Ocean",
+    "Book",
+    "Egg",
+    "House",
+    "Dog",
+    "Ball",
+    "Star",
+    "Shirt",
+    "Ice cream",
+    "Drum",
+    "Christmas tree",
+    "Spider",
+    "Shoe",
+    "Smile",
+    "Hat",
+    "Cookie",
+    "Bird",
+    "Kite",
+    "Snowman",
+    "Butterfly",
+    "Cupcake",
+    "Fish",
+    "Grapes",
+    "Socks",
+    "TV",
+    "Bed",
+    "Phone",
+    "Skateboard",
+    "Airplane",
+    "Nose",
+    "Eyes",
+    "Apple",
+    "Sun",
+    "Sandwich",
+    "Cherry",
+    "Bubble",
+    "Moon",
+    "Snow",
+    "Person",
+  ];
 
-'Elephant',
-'Ocean',
-'Book',
-'Egg',
-'House',
-'Dog',
-'Ball',
-'Star',
-'Shirt',
-'Underwear',
-'Ice cream',
-'Drum',
-'Christmas tree',
-'Spider',
-'Shoe',
-'Smile',
-'Cup',
-'Hat',
-'Cookie',
-'Bird',
-'Kite',
-'Snowman',
-'Butterfly',
-'Cupcake',
-'Fish',
-'Grapes',
-'Socks',
-'TV',
-'Bed',
-'Phone',
-'DolL',
-'Trash can',
-'Skateboard',
-'Sleep',
-'Sad',
-'Airplane',
-'Nose',
-'Eyes',
-'Apple',
-'Sun',
-'Sandwich',
-'Cherry',
-'Bubble',
-'Moon',
-'Snow',
-'Candy',
-'Roof',
+  const randomIndex = Math.floor(Math.random() * words.length);
 
-
-  ]
-
-
-
-}
+  return words[randomIndex];
+};
