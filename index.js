@@ -74,7 +74,9 @@ app.post("/login", async (req, res) => {
 
 const game = {
   //roomName: {
-  //  players: []
+  //  players: [],
+  //  status: boolean,
+  //  drawPlayer: ''                        
   // }
 
   addUser: function (room, username) {
@@ -99,8 +101,13 @@ const game = {
   initializeRoom: function (room, username) {
     this[room] = { 
       players: [username],
-      status: 'waiting'
+      started: false
     };
+  },
+
+  startGame: function (room, username) {
+    this[room].started = true
+    this[room].drawPlayer = username
   },
 };
 
@@ -200,11 +207,17 @@ io.on("connection", (socket) => {
   socket.on("new-message", (messageObj)=>{
 
     console.log('NEW MESSAGE', socket.username, messageObj);
-    // console.log('new-message', messageObj);
-    // console.log(io.sockets.adapter.rooms);
     socket.to(socket.roomName).emit(
       'message-data', messageObj
     )
+  })
+
+  socket.on("start-trigger", ()=>{
+    console.log('START-TRIGGER', socket.username, socket.roomName);
+    
+    game.startGame(socket.roomName, socket.username)
+
+    io.to(socket.roomName).emit('start-game' , game[socket.roomName])
   })
 
   socket.on("disconnect", (reason) => {
@@ -226,3 +239,61 @@ const roomsArray = (roomsMap) => {
   // return just the names of the remaining rooms (the rooms that are user generated)
   return filtered.map((i) => i[0]);
 };
+
+const randomWord = () =>{
+  const words = [
+
+'Elephant',
+'Ocean',
+'Book',
+'Egg',
+'House',
+'Dog',
+'Ball',
+'Star',
+'Shirt',
+'Underwear',
+'Ice cream',
+'Drum',
+'Christmas tree',
+'Spider',
+'Shoe',
+'Smile',
+'Cup',
+'Hat',
+'Cookie',
+'Bird',
+'Kite',
+'Snowman',
+'Butterfly',
+'Cupcake',
+'Fish',
+'Grapes',
+'Socks',
+'TV',
+'Bed',
+'Phone',
+'DolL',
+'Trash can',
+'Skateboard',
+'Sleep',
+'Sad',
+'Airplane',
+'Nose',
+'Eyes',
+'Apple',
+'Sun',
+'Sandwich',
+'Cherry',
+'Bubble',
+'Moon',
+'Snow',
+'Candy',
+'Roof',
+
+
+  ]
+
+
+
+}
