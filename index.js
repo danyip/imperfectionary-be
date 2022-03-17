@@ -142,8 +142,10 @@ io.on("connection", (socket) => {
 
   socket.on("enter-lobby", () => {
     // Send all room names to lobby
+    
     const rooms = roomsArray(io.sockets.adapter.rooms);
-    io.emit("new-rooms", rooms);
+    // io.emit("new-rooms", rooms);
+    socket.emit("new-rooms", rooms)
   });
 
   socket.on("join-room", (data) => {
@@ -188,12 +190,14 @@ io.on("connection", (socket) => {
 
   socket.on("new-message", (messageObj)=>{
     console.log('new-message', messageObj);
+    console.log(io.sockets.adapter.rooms);
     socket.to(socket.roomName).emit(
       'message-data', messageObj
     )
   })
 
   socket.on("disconnect", (reason) => {
+    console.log('SOCKET DISCONNECTED');
     // Remove user from game
     game.removeUser(socket.roomName, socket.username);
     io.to(socket.roomName).emit('update-player-list', game[socket.roomName]?.players)
