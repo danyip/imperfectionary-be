@@ -21,8 +21,8 @@ const User = require("./models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const jwtAuthenticate = require("express-jwt");
-const dotenv = require("dotenv");
-dotenv.config();
+const dotenv = require("dotenv").config()
+
 
 const checkAuth = () => {
   return jwtAuthenticate({
@@ -34,7 +34,7 @@ const checkAuth = () => {
 
 const mongoose = require("mongoose");
 
-mongoose.connect("mongodb://127.0.0.1/imperfectionary");
+mongoose.connect(process.env.MONGO_URI);
 
 const db = mongoose.connection;
 
@@ -44,7 +44,7 @@ db.on("error", (err) => {
   // TODO: handle gracefully instead? Keep server running?
 });
 
-const PORT = 9090;
+const PORT = process.env.PORT || 9090;
 
 httpServer.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
