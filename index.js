@@ -68,7 +68,7 @@ app.post("/login", async (req, res) => {
   } catch (err) {
     console.log("Error querying User", err);
   }
-  
+
 });
 
 app.post("/users/create", async (req, res) => {
@@ -90,8 +90,11 @@ app.post("/users/create", async (req, res) => {
     res.json({token, user: user.username})
 
   } catch (err) {
-    console.log(err);
-    res.sendStatus(422)
+    console.log('CATCH ERROR', err);
+    // res.sendStatus(422)
+
+    
+    res.status(422).json(err)
   }
   
 });
