@@ -129,28 +129,6 @@ app.use( async (req, res, next) => {
 app.post("/users/update", async (req, res) => {
   console.log("POST /users/update", req.body);
 
-  // const newUser = {
-  //   username: req.body.username,
-  //   email: req.body.email,
-  //   password_digest: bcrypt.hashSync(req.body.password, 10)
-  // };
-
-  // try {
-  //   const user = await User.create(newUser)
-  //   console.log(user);
-  //   const token = jwt.sign({ _id: user._id }, process.env.SERVER_SECRET_KEY, {
-  //     expiresIn: "72h",
-  //   });
-
-  //   res.json({token, user: user.username})
-
-  // } catch (err) {
-  //   console.log('CATCH ERROR', err);
-  //   // res.sendStatus(422)
-
-    
-  //   res.status(422).json(err)
-  // }
 
   try {
 
@@ -230,14 +208,14 @@ const game = {
   initializeRoom: function (room, username) {
     this[room] = {
       players: [username],
-      started: false,
-      drawPlayer: '',
-      word: '',
+      // started: false,
+      drawPlayer: username,
+      word: randomWord(),
     };
   },
 
   startGame: function (room, username) {
-    this[room].started = true;
+    // this[room].started = true;
     this[room].drawPlayer = username;
     this[room].word = randomWord()
   },
@@ -323,9 +301,9 @@ io.on("connection", (socket) => {
     console.log("ENTER GAME ROOM", socket.username);
 
     if (game[socket.roomName]?.players) {
-      callback(game[socket.roomName].players, socket.roomName);
+      callback(game[socket.roomName], socket.roomName);
     } else {
-      callback([], "NO ROOM FOUND");
+      callback(null, "NO ROOM FOUND");
     }
 
     io.to(socket.roomName).emit(
@@ -336,16 +314,41 @@ io.on("connection", (socket) => {
 
   socket.on("new-message", (messageObj) => {
     console.log("NEW MESSAGE", socket.username, messageObj);
+
+    // Send the message to all other sockets in the room
     socket.to(socket.roomName).emit("message-data", messageObj);
+    
+    // Convert message and secret to lowercase
+    const message = messageObj.text.toLowerCase()
+    const secret = game[socket.roomName].word.toLowerCase()
+    
+    // Check if the message contains the secret
+    if (message.includes(secret)) {
+      console.log('FOUND IT!');
+      
+      // Send the username and the word 
+      io.to(socket.roomName).emit("correct-guess", socket.username, game[socket.roomName].word);
+
+      // Change word and drawPlayer
+      game[socket.roomName].word = randomWord()
+      game[socket.roomName].drawPlayer = socket.username
+
+      // Wait 5 seconds then trigger the next round
+      setTimeout(() => {
+        io.to(socket.roomName).emit("next-round", game[socket.roomName]);
+      }, 5000);
+
+    }
+
   });
 
-  socket.on("start-trigger", () => {
-    console.log("START-TRIGGER", socket.username, socket.roomName);
+  // socket.on("start-trigger", () => {
+  //   console.log("START-TRIGGER", socket.username, socket.roomName);
 
-    game.startGame(socket.roomName, socket.username);
+  //   game.startGame(socket.roomName, socket.username);
 
-    io.to(socket.roomName).emit("start-game", game[socket.roomName]);
-  });
+  //   io.to(socket.roomName).emit("start-game", game[socket.roomName]);
+  // });
 
   socket.on("canvas-data", (data) => {
     socket.to(socket.roomName).emit("canvas-data", data);
