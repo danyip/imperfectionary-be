@@ -90,12 +90,108 @@ app.post("/users/create", async (req, res) => {
       expiresIn: "72h",
     });
 
-    res.json({token, user: user.username})
+    const currentUser = {username: user.username, email: user.email}
+    res.json({token, user: currentUser})
 
   } catch (err) {
-    console.log('CATCH ERROR', err);
+    console.log('ERROR CREATING USER', err);
     // res.sendStatus(422)
 
+    
+    res.status(422).json(err)
+  }
+  
+});
+
+app.use( checkAuth() );
+
+app.use( async (req, res, next) => {
+
+  try {
+    // use the req.auth object provided by the checkAuth() above to get the
+    // logged-in user's ID and use it to look up the User object
+    const user = await User.findOne({ _id: req.auth._id });
+    
+    if( user === null ){
+      res.sendStatus( 401 ); // No user with that ID found (stale token?)
+    } else {
+      req.user = user;
+      next(); // move on to next handler (i.e. actual specific route handler)
+    }
+
+  } catch( err ){
+    console.log('Error querying user in auth middleware', err);
+    res.sendStatus( 500 ); // prevents any further handlers from running
+  }
+
+});
+
+app.post("/users/update", async (req, res) => {
+  console.log("POST /users/update", req.body);
+
+  // const newUser = {
+  //   username: req.body.username,
+  //   email: req.body.email,
+  //   password_digest: bcrypt.hashSync(req.body.password, 10)
+  // };
+
+  // try {
+  //   const user = await User.create(newUser)
+  //   console.log(user);
+  //   const token = jwt.sign({ _id: user._id }, process.env.SERVER_SECRET_KEY, {
+  //     expiresIn: "72h",
+  //   });
+
+  //   res.json({token, user: user.username})
+
+  // } catch (err) {
+  //   console.log('CATCH ERROR', err);
+  //   // res.sendStatus(422)
+
+    
+  //   res.status(422).json(err)
+  // }
+
+  try {
+
+    if (req.body.password.length === 0) {
+      const result = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+        username: req.body.username,
+        email: req.body.email
+        },
+        {new: true}
+      )
+      
+      
+      const currentUser = {username: result.username, email: result.email}
+      
+      console.log('UPDATED: ', currentUser);
+      res.json({user: currentUser})
+      
+    } else {
+
+      const result = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+        username: req.body.username,
+        email: req.body.email,
+        passwordDigest: bcrypt.hashSync(req.body.password, 10)
+        },
+        {new: true}
+      )
+      
+      const currentUser = {username: result.username, email: result.email}
+      
+      console.log('UPDATED: ', currentUser);
+      res.json({user: currentUser})
+    }
+    
+    
+    
+  } catch (err) {
+    console.log('ERROR UPDATING USER', err);
     
     res.status(422).json(err)
   }
