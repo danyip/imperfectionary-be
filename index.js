@@ -61,7 +61,10 @@ app.post("/login", async (req, res) => {
       const token = jwt.sign({ _id: user._id }, process.env.SERVER_SECRET_KEY, {
         expiresIn: "72h",
       });
-      res.json({ token, user: user.username });
+
+      const currentUser = {username: user.username, email: user.email}
+
+      res.json({ token, user: currentUser });
     } else {
       res.sendStatus(401);
     }
