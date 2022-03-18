@@ -68,6 +68,32 @@ app.post("/login", async (req, res) => {
   } catch (err) {
     console.log("Error querying User", err);
   }
+  
+});
+
+app.post("/users/create", async (req, res) => {
+  console.log("POST /users/create", req.body);
+
+  const newUser = {
+    username: req.body.username,
+    email: req.body.email,
+    password_digest: bcrypt.hashSync(req.body.password, 10)
+  };
+
+  try {
+    const user = await User.create(newUser)
+    console.log(user);
+    const token = jwt.sign({ _id: user._id }, process.env.SERVER_SECRET_KEY, {
+      expiresIn: "72h",
+    });
+
+    res.json({token, user: user.username})
+
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(422)
+  }
+  
 });
 
 /*********************************************************************************/
