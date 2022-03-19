@@ -335,6 +335,7 @@ io.on("connection", (socket) => {
 
       // Wait 5 seconds then trigger the next round
       setTimeout(() => {
+        io.to(socket.roomName).emit("clear");
         io.to(socket.roomName).emit("next-round", game[socket.roomName]);
       }, 5000);
 
@@ -353,6 +354,10 @@ io.on("connection", (socket) => {
   socket.on("canvas-data", (data) => {
     socket.to(socket.roomName).emit("canvas-data", data);
   });
+
+  socket.on("clear-canvas", ()=>{
+    socket.to(socket.roomName).emit("clear");
+  })
 
   socket.on("disconnect", (reason) => {
     console.log("SOCKET DISCONNECTED", socket.username);
