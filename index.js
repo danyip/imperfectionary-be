@@ -66,7 +66,9 @@ app.post("/login", async (req, res) => {
 
       res.json({ token, user: currentUser });
     } else {
-      res.sendStatus(401);
+      // res.sendStatus(401);
+      res.status(401).json({message: "Incorrect email or password"})
+      
     }
   } catch (err) {
     console.log("Error querying User", err);
@@ -97,7 +99,6 @@ app.post("/users/create", async (req, res) => {
     console.log('ERROR CREATING USER', err);
     // res.sendStatus(422)
 
-    
     res.status(422).json(err)
   }
   
@@ -142,7 +143,6 @@ app.post("/users/update", async (req, res) => {
         {new: true}
       )
       
-      
       const currentUser = {username: result.username, email: result.email}
       
       console.log('UPDATED: ', currentUser);
@@ -165,8 +165,6 @@ app.post("/users/update", async (req, res) => {
       console.log('UPDATED: ', currentUser);
       res.json({user: currentUser})
     }
-    
-    
     
   } catch (err) {
     console.log('ERROR UPDATING USER', err);
@@ -343,13 +341,6 @@ io.on("connection", (socket) => {
 
   });
 
-  // socket.on("start-trigger", () => {
-  //   console.log("START-TRIGGER", socket.username, socket.roomName);
-
-  //   game.startGame(socket.roomName, socket.username);
-
-  //   io.to(socket.roomName).emit("start-game", game[socket.roomName]);
-  // });
 
   socket.on("canvas-data", (data) => {
     socket.to(socket.roomName).emit("canvas-data", data);
