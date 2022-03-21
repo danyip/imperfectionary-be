@@ -432,9 +432,13 @@ io.on("connection", (socket) => {
       game[socket.roomName].word = randomWord()
       game[socket.roomName].drawPlayer = socket.username
 
-      // Wait 5 seconds then trigger the next round
+      // Clear the canvas
       setTimeout(() => {
         io.to(socket.roomName).emit("clear");
+      }, 4000);
+      
+      // Wait 5 seconds then trigger the next round
+      setTimeout(() => {
         io.to(socket.roomName).emit("next-round", game[socket.roomName]);
       }, 5000);
 
