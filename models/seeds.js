@@ -4,7 +4,6 @@ const dotenv = require("dotenv").config()
 const User = require('./User');
 
 
-// mongoose.connect('mongodb://127.0.0.1/imperfectionary');
 mongoose.connect(process.env.MONGO_URI);
 
 const db = mongoose.connection;

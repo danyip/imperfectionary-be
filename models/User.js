@@ -13,7 +13,6 @@ const UserSchema = new mongoose.Schema({
   },
   passwordDigest: {
     type: String,
-    // required: true,
   },
 
   createdAt: {
